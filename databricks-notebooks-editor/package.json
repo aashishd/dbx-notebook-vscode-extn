@@ -13,12 +13,7 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "databricks-notebooks-editor.helloWorld",
-        "title": "Databricks Notebook: Hello World"
-      }
-    ],
+    "commands": [],
     "notebooks": [
       {
         "type": "my-notebook",
