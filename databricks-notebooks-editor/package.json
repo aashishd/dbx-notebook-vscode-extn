@@ -10,10 +10,17 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:scala"
+  ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "databricks-notebooks-editor.openAsDatabricksNotebook",
+        "title": "Open as Databricks Notebook"
+      }
+    ],
     "notebooks": [
       {
         "type": "my-notebook",
@@ -22,7 +29,8 @@
           {
             "filenamePattern": "*.scala"
           }
-        ]
+        ],
+        "priority": "option"
       }
     ]
   },

@@ -15,6 +15,62 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "databricks-notebooks-editor" is now active!');
 	context.subscriptions.push(vscode.workspace.registerNotebookSerializer('my-notebook', new SampleSerializer()));
+
+	// Register command to manually open as Databricks notebook
+	context.subscriptions.push(
+		vscode.commands.registerCommand('databricks-notebooks-editor.openAsDatabricksNotebook', async (uri?: vscode.Uri) => {
+			const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+			if (targetUri) {
+				await openAsDatabricksNotebook(targetUri);
+			}
+		})
+	);
+
+	// Listen to text document open events to auto-detect Databricks notebooks
+	context.subscriptions.push(
+		vscode.workspace.onDidOpenTextDocument(async (document) => {
+			// Only check .scala files
+			if (document.languageId === 'scala' && document.uri.scheme === 'file') {
+				await checkAndOpenAsDatabricksNotebook(document);
+			}
+		})
+	);
+
+	// Check already open documents when extension activates
+	vscode.workspace.textDocuments.forEach(async (document) => {
+		if (document.languageId === 'scala' && document.uri.scheme === 'file') {
+			await checkAndOpenAsDatabricksNotebook(document);
+		}
+	});
+}
+
+async function checkAndOpenAsDatabricksNotebook(document: vscode.TextDocument): Promise<void> {
+	// Check if the file starts with the Databricks notebook header
+	if (document.lineCount > 0) {
+		const firstLine = document.lineAt(0).text;
+		if (firstLine.trim() === DATABRICKS_NOTEBOOK_HEADER) {
+			// Delay to avoid race condition with document loading
+			setTimeout(() => openAsDatabricksNotebook(document.uri), 100);
+		}
+	}
+}
+
+async function openAsDatabricksNotebook(uri: vscode.Uri): Promise<void> {
+	try {
+		// Close any open text editors for this file
+		const editors = vscode.window.visibleTextEditors.filter(e => e.document.uri.toString() === uri.toString());
+		for (const editor of editors) {
+			await vscode.window.showTextDocument(editor.document, { preview: false, preserveFocus: false });
+			await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		}
+		
+		// Open as notebook using our registered notebook type
+		const notebook = await vscode.workspace.openNotebookDocument(uri);
+		await vscode.window.showNotebookDocument(notebook);
+	} catch (error) {
+		console.error('Failed to open as Databricks notebook:', error);
+		vscode.window.showErrorMessage(`Failed to open as Databricks notebook: ${error}`);
+	}
 }
 
 interface DatabricksCell {
@@ -127,7 +183,7 @@ class SampleSerializer implements vscode.NotebookSerializer {
       
       if (cell.kind === vscode.NotebookCellKind.Markup) {
         // Markdown cell - prefix each line with // MAGIC
-        output.push(MARKDOWN_CELL_HEADER)
+        output.push(MARKDOWN_CELL_HEADER);
         const lines = cell.value.split(/\r?\n/);
         for (const line of lines) {
           output.push(`${MARKDOWN_PREFIX} ${line}`);
